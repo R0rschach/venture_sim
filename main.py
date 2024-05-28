@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-EXPENSES_PERCENTAGE = 0.10
+EXPENSES_PERCENTAGE = 0.08
 
 st.set_page_config(layout="wide")
 st.header("VC Fund Construction Simulator")
@@ -43,7 +43,7 @@ investable_capital_amount = fund_capital_committed_amount * (
     1 - EXPENSES_PERCENTAGE - management_fee_percentage
 )
 
-## use plotly to draw a waterfall cahrt of the investable capital
+## use plotly to draw a waterfall chart of the investable capital
 st.subheader("Investable Capital Waterfall")
 fig = go.Figure(
     go.Waterfall(
@@ -78,6 +78,14 @@ st.plotly_chart(fig)
 # 3. https://carta.com/blog/state-of-private-markets-q1-2024/
 # 4. https://info.carta.com/rs/214-BTD-103/images/Carta%20State%20of%20Pre-Seed%2C%20Q1%202024%20%281%29.pdf?version=0
 
+st.subheader("Round Profile Settings")
+st.markdown(
+    """
+    Edit the round profile settings to be used in the simulation.
+
+    *Default settings are based on the industry average from Q1 2024. Data sources: [Carta](https://carta.com/) and [NVCA](https://nvca.org/)*.
+    """
+)
 round_profile_df = pd.DataFrame(
     {
         "Round": [
@@ -85,7 +93,7 @@ round_profile_df = pd.DataFrame(
             "Seed",
             "Series A",
         ],
-        "Pre-Money Val.": [1_500_000, 16_000_000, 40_000_000],
+        "Pre-Money Val.": [10_500_000, 16_000_000, 40_000_000],
         "Post-Money Val.": [12_000_000, 20_000_000, 50_000_000],
         "Opetion Pool(%)": [10, 10, 10],
         "Ascension Rate(%)": [70, 50, 50],
@@ -97,17 +105,66 @@ round_profile_df = pd.DataFrame(
 )
 
 edit_round_profile_df = st.data_editor(round_profile_df)
+avg_post_money_pre_seed = edit_round_profile_df["Post-Money Val."][0]
+avg_post_money_seed = edit_round_profile_df["Post-Money Val."][1]
+avg_post_money_series_a = edit_round_profile_df["Post-Money Val."][2]
+
+# Create a 2 row 3 column layout to let user input the fund allocation, number of deals, and avg check size
+st.subheader("Fund Allocation Settings")
+st.markdown(
+    """
+    Edit the fund allocation settings to be used in the simulation.
+    """
+)
+
+parameter_container = st.container(border=True)
+
+col_pre_seed, col_seed, col_series_a = parameter_container.columns(3)
+
+tile_pre_seed = col_pre_seed.container()
+tile_seed = col_seed.container()
+tile_series_a = col_series_a.container()
+
+# Pre-Seed
+deals_pre_seed = tile_pre_seed.slider(
+    "Number of Deals (Pre-Seed)", min_value=10, max_value=50, value=30, step=1
+)
+avg_check_pre_seed = tile_pre_seed.slider(
+    "Avg. Check Size (Pre-Seed)", min_value=250_000, max_value=1_500_000, value=750_000, step=50_000
+)
+
+# Seed
+deals_seed = tile_seed.slider(
+    "Number of Deals (Seed)", min_value=10, max_value=50, value=20, step=1
+)
+avg_check_seed = tile_seed.slider(
+    "Avg. Check Size (Seed)", min_value=500_000, max_value=2_500_000, value=1_500_000, step=50_000
+)
+
+# Series A
+deals_series_a = tile_series_a.slider(
+    "Number of Deals (Series A)", min_value=5, max_value=20, value=10, step=1
+)
+avg_check_series_a = tile_series_a.slider(
+    "Avg. Check Size (Series A)", min_value=1_000_000, max_value=5_000_000, value=3_000_000, step=50_000
+)
+
 
 
 # Create a input chart to put down deals to invest in each of the rounds and average check size
-col_round_params, col_vis = st.columns([0.4, 0.6])
+col_round_params, col_vis = st.columns([0.5, 0.5])
 tile_round_params = col_round_params.container(border=True)
-tile_vis = col_vis.container(border=True    )
+tile_vis = col_vis.container(border=True)
 
 round_params_df = pd.DataFrame({
     "Round": ["Pre-Seed", "Seed", "Series A"],
-    "Deals": [30, 20, 10],
-    "Avg. Check": [750_000, 1_500_000, 3_000_000]
+    "Deals": [deals_pre_seed, deals_seed, deals_series_a],
+    "Avg. Check": [avg_check_pre_seed, avg_check_seed, avg_check_series_a],
+    "Initial Ownership(%)": [
+        avg_check_pre_seed / avg_post_money_pre_seed * 100,
+        avg_check_seed / avg_post_money_seed * 100,
+        avg_check_series_a / avg_post_money_series_a * 100,
+    ]
 })
 
 edit_round_params_df = tile_round_params.data_editor(round_params_df)
